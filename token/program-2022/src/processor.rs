@@ -167,7 +167,11 @@ impl Processor {
         for extension in required_extensions {
             account.init_account_extension_from_type(extension)?;
         }
-
+        // add here
+        // check account extension is ImmutableOwner when mint is non-transferable
+        // if account.get_extension::<ImmutableOwner>().is_ok(){
+        //
+        // }
         let starting_state =
             if let Ok(default_account_state) = mint.get_extension::<DefaultAccountState>() {
                 AccountState::try_from(default_account_state.state)
@@ -176,12 +180,15 @@ impl Processor {
                 AccountState::Initialized
             };
 
+
         account.base.mint = *mint_info.key;
         account.base.owner = *owner;
         account.base.close_authority = COption::None;
         account.base.delegate = COption::None;
         account.base.delegated_amount = 0;
         account.base.state = starting_state;
+        // to tell it is a non-transferable mint and make it owner immutable from creation
+        //
         if cmp_pubkeys(mint_info.key, &native_mint::id()) {
             let rent_exempt_reserve = rent.minimum_balance(new_account_info_data_len);
             account.base.is_native = COption::Some(rent_exempt_reserve);
@@ -924,12 +931,15 @@ impl Processor {
         // If the mint if non-transferable, only allow minting to accounts
         // with immutable ownership.
         if mint.get_extension::<NonTransferable>().is_ok()
-            && destination_account
+            && (destination_account
                 .get_extension::<ImmutableOwner>()
-                .is_err()
+                .is_err() ||
+            destination_account
+                .get_extension::<ImmutableOwner>().is_err())
         {
             return Err(TokenError::NonTransferableNeedsImmutableOwnership.into());
         }
+
 
         if let Some(expected_decimals) = expected_decimals {
             if expected_decimals != mint.base.decimals {
@@ -1304,6 +1314,7 @@ impl Processor {
 
     /// Processes an [InitializeImmutableOwner](enum.TokenInstruction.html)
     /// instruction
+    /// immutable token account initialize
     pub fn process_initialize_immutable_owner(accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let token_account_info = next_account_info(account_info_iter)?;
