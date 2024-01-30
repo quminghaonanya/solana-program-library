@@ -164,6 +164,13 @@ impl Processor {
         {
             return Err(ProgramError::InvalidAccountData);
         }
+
+        if mint.get_extension::<NonTransferable>().is_ok()
+            && account.get_extension::<ImmutableOwner>().is_err()
+        {
+            return Err(TokenError::NonTransferableNeedsImmutableOwnership.into());
+        }
+
         for extension in required_extensions {
             account.init_account_extension_from_type(extension)?;
         }
@@ -1304,6 +1311,7 @@ impl Processor {
 
     /// Processes an [InitializeImmutableOwner](enum.TokenInstruction.html)
     /// instruction
+    /// immutable token account initialize
     pub fn process_initialize_immutable_owner(accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let token_account_info = next_account_info(account_info_iter)?;
